@@ -1,0 +1,11 @@
+name: chatcode
+version: '${version}'
+main: intelliractive.chatcode.Chatcode
+api-version: '1.20'
+authors: [ Intelliractive ]
+commands:
+  chatcode:
+    description: Use Spigot API in real time!
+    usage: /<command>
+    permission: op
+#    permission: chatcode.chatcodecommandpermission
