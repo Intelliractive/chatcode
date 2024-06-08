@@ -9,3 +9,6 @@ after invoking the command to switch to Groovy shell.
 - [ ] Import Spigot API automatically
 - [ ] Support Groovy shell
 - [ ] *(?)* Support other APIs like Fabric *(?)*
+
+### Building
+Execute the `shadowJar` *Gradle* task
