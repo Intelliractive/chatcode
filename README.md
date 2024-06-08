@@ -1,14 +1,16 @@
 # ChatCode
-## A revolution in using the Spigot API!
+## A revolution in the Spigot world!
+This plugin makes you able to utilise Spigot API in real time in the game chat! 
 
-This plugin makes you able to utilise Spigot API in real time
-in the game chat! Use `/chatcode` to enter JShell, or write `>GVYSH<`
-after invoking the command to switch to Groovy shell.
+### Usage
+Use `/chatcode` to enter [Groovy](https://groovy-lang.org/) shell and create! 
+To import Bukkit & Spigot classes, use the command and write
+`>LOAD< needed-class`, then you can import it in your code. Quit with `>QUIT<`.
 
-### To-do
-- [ ] Import Spigot API automatically
-- [ ] Support Groovy shell
-- [ ] *(?)* Support other APIs like Fabric *(?)*
+#### To-do
+- [ ] Import Bukkit & Spigot APIs automatically
+- [ ] *(?)* Support Sponge & Fabric APIs *(?)*
+- [ ] *(?)* Support other programming languages *(?)*
 
 ### Building
 Execute the `shadowJar` *Gradle* task

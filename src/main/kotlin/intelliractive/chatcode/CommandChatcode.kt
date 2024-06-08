@@ -1,7 +1,7 @@
 package intelliractive.chatcode
 
+import groovy.lang.GroovyShell
 import jdk.jshell.JShell
-import jdk.jshell.Snippet
 import jdk.jshell.Snippet.Status
 import org.bukkit.Bukkit.broadcastMessage
 import org.bukkit.ChatColor
@@ -12,14 +12,15 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.AsyncPlayerChatEvent
+import org.codehaus.groovy.control.CompilationFailedException
 
 
 class CommandChatcode : CommandExecutor, Listener {
     var codingInChat: List<Player> = listOf()
-    var jshell: JShell = JShell.create()
+    var groovyShell = GroovyShell()
 
-    fun reloadJShell() {
-        jshell = JShell.create()
+    fun reloadShell() {
+        groovyShell = GroovyShell()
     }
 
     // This method is called, when somebody uses our command
@@ -33,8 +34,8 @@ class CommandChatcode : CommandExecutor, Listener {
             // add the player to the list
             codingInChat += sender
             sender.sendMessage("${ChatColor.AQUA}${ChatColor.BOLD}${ChatColor.UNDERLINE}[ChatCode] You are now in live coding mode!${ChatColor.RESET}")
-            sender.sendMessage("${ChatColor.GOLD}${ChatColor.ITALIC}[ChatCode] Using JShell${ChatColor.RESET}")
-            sender.sendMessage("${ChatColor.GOLD}[ChatCode] Type '>GROOVYSH<' or 'GVYSH' to switch to Groovy shell, or '>QUIT<' to quit live coding mode${ChatColor.RESET}")
+            sender.sendMessage("${ChatColor.GOLD}${ChatColor.ITALIC}[ChatCode] Using Groovy shell${ChatColor.RESET}")
+            sender.sendMessage("${ChatColor.GOLD}[ChatCode] Type '>QUIT<' to quit live coding mode${ChatColor.RESET}")
         } else {
             codingInChat -= sender
             liveCodingModeExitMessage(sender)
@@ -47,10 +48,6 @@ class CommandChatcode : CommandExecutor, Listener {
         player.sendMessage("${ChatColor.GREEN}==> $message${ChatColor.RESET}")
     }
 
-    fun snippetRecoverableValueMessage(player: Player, snippetStatus: Status, message: String) {
-        player.sendMessage("${ChatColor.YELLOW}[$snippetStatus] ==> $message${ChatColor.RESET}")
-    }
-
     fun liveCodingModeExitMessage(player: Player) {
         player.sendMessage("${ChatColor.DARK_AQUA}${ChatColor.BOLD}${ChatColor.UNDERLINE}[ChatCode] You have exited live coding mode!${ChatColor.RESET}")
     }
@@ -59,52 +56,38 @@ class CommandChatcode : CommandExecutor, Listener {
         broadcastMessage("${ChatColor.RED}[ChatCode] /!\\ $message${ChatColor.RESET}")
     }
 
+    var classLoadRegex = Regex(">LOAD< [a-zA-Z_0-9.]+")
+
     @EventHandler
     fun onPlayerChat(event: AsyncPlayerChatEvent) {
         // for all players in the list, treat chat messages as code instructions
         if (event.player in codingInChat) {
-            when (event.message) {
-                // use Groovy shell
-                ">GROOVYSH<", ">GVYSH<" -> TODO()
-
-                // quit live coding mode
-                ">QUIT<" -> {
-                    event.player.sendMessage("${ChatColor.GOLD}${ChatColor.ITALIC}[ChatCode] Quitting...${ChatColor.RESET}")
-                    codingInChat -= event.player
-                }
-
-                else -> {
-                    try {
-                        for (se in jshell.eval(event.message)) {
-                            when (se.status()) {
-                                Status.VALID -> snippetValueMessage(event.player, se.value())
-
-                                Status.RECOVERABLE_DEFINED, Status.RECOVERABLE_NOT_DEFINED ->
-                                    snippetRecoverableValueMessage(event.player, se.status(), se.value())
-
-                                Status.DROPPED, Status.OVERWRITTEN, Status.REJECTED, Status.NONEXISTENT -> {
-                                    codingInChat -= event.player
-                                    publicErrorMessage(
-                                        "The code snippet is ${ChatColor.ITALIC}dropped, " +
-                                                "overwritten, rejected${ChatColor.RESET}${ChatColor.RED} or " +
-                                                "${ChatColor.ITALIC}nonexistent${ChatColor.RESET}${ChatColor.RED}. Restarting JShell"
-                                    )
-                                    liveCodingModeExitMessage(event.player)
-
-                                    //reload the shell
-                                    reloadJShell()
-                                }
-                            }
-                        }
-                    }
-                    // emergency exit from live coding mode
-                    catch (e: IllegalStateException) {
-                        codingInChat -= event.player
-                        publicErrorMessage("${event.player.name} crashed the JShell instance...")
+            if (classLoadRegex matches event.message) {
+                groovyShell.classLoader.loadClass(event.message.split(" ")[1])
+            }
+            else {
+                when (event.message) {
+                    // quit live coding mode
+                    ">QUIT<" -> {
+                        event.player.sendMessage("${ChatColor.GOLD}${ChatColor.ITALIC}[ChatCode] Quitting...${ChatColor.RESET}")
                         liveCodingModeExitMessage(event.player)
+                        codingInChat -= event.player
+                    }
 
-                        //reload the shell
-                        reloadJShell()
+                    else -> {
+                        try {
+                            var res = groovyShell.evaluate(event.message)
+                            snippetValueMessage(event.player, res.toString())
+                        }
+                        // emergency exit from live coding mode
+                        catch (e: CompilationFailedException) {
+                            codingInChat -= event.player
+                            publicErrorMessage("${event.player.name} caused an error the Groovy shell instance")
+                            liveCodingModeExitMessage(event.player)
+
+                            //reload the shell
+                            reloadShell()
+                        }
                     }
                 }
             }
